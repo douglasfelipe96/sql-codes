@@ -1,0 +1,55 @@
+create or replace TRIGGER HCD_INSERT_FIM_CONS_RETORNO
+BEFORE UPDATE ON EHR_REGISTRO
+FOR EACH ROW
+
+/*<DS_SCRIPT>
+ DESCRIÇÃO...: Trigger que realiza a inserção da data fim de consulta ao flagar no template que a consulta terá retorno
+ RESPONSAVEL.: DOUGLAS FELIPE (douglas.felipe)
+ DATA........: 26/12/2022
+ APLICAÇÃO...: TASY
+ ATUALIZAÇÃO...:
+    -- EXEMPLO:Atualizado em 07/01/22 por Douglas F: Adicionado filtro para buscar o bloqueio também pelo horário caso informado
+ OBSERVAÇÕES...:  
+    -- EXEMPLO: Douglas F: Parâmetro IE_OPCAO_P pode ser 'A' - Agrupados ou 'N' - Normal.
+</DS_SCRIPT>*/
+
+
+DECLARE
+
+NR_ATENDIMENTO_W NUMBER := :NEW.NR_ATENDIMENTO;
+NR_SEQ_REG_W NUMBER := :NEW.NR_SEQUENCIA;
+DT_LIBERACAO_W DATE := :NEW.DT_LIBERACAO;
+DT_INATIVACAO_w DATE := :NEW.DT_INATIVACAO;
+NR_SEQ_TEMPL_W NUMBER := :NEW.NR_SEQ_TEMPL;
+
+NR_SEQ_REG_TEMPLATE_W NUMBER;
+DS_RETORNO_W VARCHAR2(10);
+DT_FIM_CONSULTA_W DATE;
+
+BEGIN
+    IF(DT_LIBERACAO_W IS NOT NULL AND DT_INATIVACAO_w IS NULL AND NR_SEQ_TEMPL_W = 100733)
+        THEN
+            SELECT NR_SEQUENCIA 
+                INTO NR_SEQ_REG_TEMPLATE_W
+            FROM EHR_REG_TEMPLATE WHERE NR_SEQ_REG = NR_SEQ_REG_W;
+
+            SELECT DS_RESULTADO 
+                INTO DS_RETORNO_W
+            FROM ehr_reg_elemento 
+            WHERE 1=1
+            AND NR_SEQ_REG_TEMPLATE = NR_SEQ_REG_TEMPLATE_W 
+            AND NR_SEQ_TEMP_CONTEUDO = 290709;
+
+            SELECT DT_FIM_CONSULTA
+                INTO DT_FIM_CONSULTA_W
+            FROM ATENDIMENTO_PACIENTE 
+            WHERE NR_ATENDIMENTO = NR_ATENDIMENTO_W;
+
+            IF(DS_RETORNO_W = 'S' AND DT_FIM_CONSULTA_W IS NULL)
+                THEN
+                    UPDATE ATENDIMENTO_PACIENTE SET DT_FIM_CONSULTA = SYSDATE WHERE NR_ATENDIMENTO = NR_ATENDIMENTO_W;
+            END IF;
+
+
+    END IF;
+END HCD_INSERT_FIM_CONS_RETORNO;
